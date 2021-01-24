@@ -1,0 +1,30 @@
+// SKT campaign data definitions
+syntax = "proto2";
+package campaign;
+
+message Image {
+    required string type = 1;   //"jpeg" , "yuv422" , "yuv420"
+    optional bytes  image_data = 2;
+    optional string blob_container = 3;
+    optional string blob_dir = 4;
+    optional string blob_file_nm = 5;
+}
+
+// ****************************************
+// [[[[ Definiton of Campaign ]]]]
+// ****************************************
+message CampaignPacket {
+    required string ver = 1;
+    required string type = 2; // add or delete
+    required string hdmap_id = 3; // skt hdmap unique_id
+    optional int32 dl_cnt = 4; // observed discrete LM count
+    optional float observe_rate = 5; // observe_cnt / travel_cnt 
+    required string category = 6; // LM category
+    required int32 attribute = 7; // LM attribute
+    required float x = 8;
+    required float y = 9;
+    optional float z = 10;
+    optional float heading = 11;
+    optional Image image = 12;
+}
+// [END messages]
