@@ -2,16 +2,21 @@
 crowd sourcing 기반으로 수집된 ROD 데이터를 클러스터링 하고, HD Map Update 알고리즘을 통해 Change Detection 결과를
 Azure Eventhub(Pub/Sub) 를 통해 공유하기 위한 인터페이스를 개발한다.
 
+# Features
+- c-its 3주치 결과는 SROD046의 데이터만 가공 (관측횟수 >= 10건)
+- add candidate 14건에 대한 사전 검증 및 엔제로 제공 (검증 완료)
+- 실데이터 수집시 파라미터 변경 (관측횟수 60건) 및 알고리즘 적용 예정
+
 ## API Flow
 ![architecture](imgs/architecture.jpg)
 
 1. change detection 조회
 mongodb 저장된 add/delete candidate 정보를 주기적으로(1d) 조회
 
-2. 캠페인 매핑
+2. 캠페인 매핑 (**Option**)
 add/delete candidate 정보와 매칭되는 (/w hdmap_id) 캠페인 데이터 수신
 
-3. Capture Image Download
+3. Capture Image Download (**Option**)
 캠페인 데이터 안에 포함된 차량에서 캡쳐하여 올린 사진 이미지를 blob 에서 다운로드
 
 4. Publish
@@ -22,6 +27,48 @@ receive module(recv_candidate.py) 에서 데이터 수신후 local /output 경�
 
 
 ## Database
+
+### Protobuf
+
+campaign.proto
+```
+// SKT campaign data definitions
+syntax = "proto2";
+package campaign;
+
+message Image {
+    required string type = 1;   //"jpeg" , "yuv422" , "yuv420"
+    optional bytes  image_data = 2;
+    optional string blob_container = 3;
+    optional string blob_dir = 4;
+    optional string blob_file_nm = 5;
+}
+
+// ****************************************
+// [[[[ Definiton of Campaign ]]]]
+// ****************************************
+message CampaignPacket {
+    required string ver = 1;
+    required string type = 2; // add or delete
+    required string hdmap_id = 3; // skt hdmap unique_id
+    optional int32 dl_cnt = 4; // observed discrete LM count
+    optional float observe_rate = 5; // observe_cnt / travel_cnt
+    required string category = 6; // LM category
+    required int32 attribute = 7; // LM attribute
+    required float x = 8; // Landmark coordinate x
+    required float y = 9; // Landmark coordinate y
+    optional float z = 10; // Landmark coordinate z
+    optional float heading = 11; // Landmark heading
+    optional Image image = 12; // campaign image (option)
+}
+// [END messages]
+```
+
+##### Protobuf Compile
+```
+protoc -I=./ --python_out=./ ./campaign.proto
+```
+컴파일 이후 campaign_pb2.py 파일 생성 되고, recv/send_candidate.py 파일에서 API 통신하기 위해 import 하여 사용
 
 ### MongoDB ([Azure CosmosDB](https://azure.microsoft.com/ko-kr/free/services/cosmos-db/?&ef_id=EAIaIQobChMIvLrug9C07gIVy2kqCh1UMwpQEAAYASAAEgKM9vD_BwE:G:s&OCID=AID2100068_SEM_EAIaIQobChMIvLrug9C07gIVy2kqCh1UMwpQEAAYASAAEgKM9vD_BwE:G:s&gclid=EAIaIQobChMIvLrug9C07gIVy2kqCh1UMwpQEAAYASAAEgKM9vD_BwE))
 
@@ -57,7 +104,7 @@ file strcuture: prldrodsa/campaign/device_id/campaign_id/capture.jpg
 - path: prl-kc-msg-eventhubns/prl-kc-msg-campaign-eventhub
 - resource group: prl-kc-msg-rg
 - namepsace: prl-kc-msg-eventhubns
-- message retention: 7days
+- message retention: 7days (**NZERO 에서 7d 이내에 데이터 수신 필요**)
 
 #### Consumer Group
 - consumer_group: nzero
@@ -74,8 +121,8 @@ file strcuture: prldrodsa/campaign/device_id/campaign_id/capture.jpg
 
 # 사용법
 
-## 테스트 환경
-1. python install (3.6.8)
+## 테스트 환경 설정 (공통)
+1. python install (python version: 3.6.8)
 가능하면 virtualenv 환경에서 실행할 것을 추천
 [pyenv 이용한 virtualenv 설치방법](http://taewan.kim/post/python_virtual_env/)
 
@@ -134,10 +181,29 @@ heading: -1.0
 #### Add Candidate
 - status = 'I' (HDMap Update 알고리즘을 적용하여, Confidence 값이 일정 임계치 이상인 후보군에 대해 I(Insert) 상태로 업데이트 된 후보군들)
 - trsfer_chk = 0 (한번도 NZERO 에 전송이 안된 후보군들 대상으로만 전송)
+- query 조건
+```
+    cursor = db.add_candidate.find({"status": 'I', "trsfer_chk": {"$lt": '1'}})
+```
 
 #### Delete Candidate
 - 주행횟수(travel_cnt) > 30
 - 관측율(observe_rate) = 관측횟수 (observe_cnt) / 주행회수 (travel_cnt) < 30% 이하인 경우. (파라미터 튜닝 필요)
+- query 조건
+```
+cursor = db.del_candidate.aggregate([
+      {
+        "$match": {
+          "travel_cnt": {"$gt": 30}
+        }
+      },
+      {
+        "$addFields": {
+            "observe_rate":{"$divide": ["$observe_cnt", "$travel_cnt"]}
+        }
+      }
+      ])
+```
 
 
 ## Subscribe
@@ -150,19 +216,17 @@ source nzero_secret.sh
 2. Change Detecion 수신
 * usage
 ```
+# 사용법
 python recv_candidate.py <date>
-```
 
-* example
-```
 # 현재 시점부터 구독
 python recv_candidate.py
 
-# 현재 시점부터 < 7d 이내 기준, 특정 날짜부터 구독
+# 현재 날짜 기준으로 < 7d 이내, 특정 날짜부터 구독 (재실행시 overwrite)
 python recv_candidate.py 2020/12/15
 ```
 
-3. Change Detecion 구조
+3. /output 구조
 
 * File Structure
 ```
@@ -183,11 +247,27 @@ output
     │   └── info.json
 ```
 
-* info.json Structure
+* info.json (output/del) sample
 ```
 {
   "ver": "0.1",
   "type": "del",
+  "hdmapId": "557631910F01N000387",
+  "observeRate": 0.12,
+  "category": "sign",
+  "attribute": 399,
+  "x": 320323.28,
+  "y": 4159710.2,
+  "z": 65.507,
+  "heading": -1.
+}
+```
+
+* info.json (output/add) sample
+```
+{
+  "ver": "0.1",
+  "type": "add",
   "hdmapId": "557631910F01N000387",
   "observeRate": 0.12,
   "category": "sign",

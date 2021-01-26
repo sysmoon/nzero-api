@@ -105,7 +105,7 @@ async def getDelCandidate():
     cursor = db.del_candidate.aggregate([
       {
         "$match": {
-          "travel_cnt": {"$gt": 30}
+          "travel_cnt": {"$gt": 60}
         }
       },
       {
