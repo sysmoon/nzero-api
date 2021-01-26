@@ -1,10 +1,14 @@
 # 소개
-crowd sourcing 기반으로 수집된 ROD 데이터를 클러스터링 하고, HD Map Update 알고리즘을 통해 Change Detection 결과를
-Azure Eventhub(Pub/Sub) 를 통해 공유하기 위한 인터페이스를 개발한다.
+crowd sourcing 기반으로 수집된 ROD 데이터를 클러스터링 하고, HD Map Update 알고리즘을 통해 Change Detection 결과를 Azure Eventhub(Pub/Sub) 를 통해 공유하기 위한 인터페이스를 개발한다.
+
+서울시 CITS 전체 구간을 3주동안 차량 1대로 10회 반복 주행하여 수집한 ROD를 클러스터링 하였고,
+이를 통해 HDMap Update 알고리즘을 실행한 Add/Delete 후보군 중에 Confidence 값이 높은 후보군을 대상으로 NZERO 에게 제공한다. 이 결과 14건의 검증된 Add Candidate 가 생성되었고, Delete 의 경우 3주 동안의 짧은 기간이 생성되지 않았다.
+향후, 서울시 버스 1700 여대의 ROD 데이터를 통해 오랜 시간동안 데이터를 누적한다면 더 많은 Change Detection 결과물이 생성될 것으로 기대한다.
 
 # Features
-- c-its 3주치 결과는 SROD046의 데이터만 가공 (관측횟수 >= 10건)
-- add candidate 14건에 대한 사전 검증 및 엔제로 제공 (검증 완료)
+- Azure Eventhub 를 통해 Change Detecion 정보를 NZERO와 공유하기 위한 인터페이스 제공
+- CITS 3주치 테스트 차량 1대 데이터만 가공 (관측횟수 <= 10건)
+- add candidate 14건에 대한 사전 검증 및 NZERO 제공 (street view 이미지로 검증 완료)
 - 실데이터 수집시 파라미터 변경 (관측횟수 60건) 및 알고리즘 적용 예정
 
 ## API Flow
@@ -208,68 +212,115 @@ cursor = db.del_candidate.aggregate([
 
 ## Subscribe
 
+Azure Eventhub Pub/Sub 구조를 통해 SKT 가 Change Detecion(Add/Del Candidate) 정보를 제공하고,
+NZERO 에서 Subscribe 하여 데이터를 수신하는 구조 입니다. 현재 Change Detecion 정보를 이미 Azure Eventhub 에 Publish 했고, 아래와 같은 방법을 통해 테스트 가능합니다.
+
 1. Azure Credential 환경변수 정의 (중요 정보이므로 .gitignore 를 통해 repo 관리에서 제외하였고, NZERO에 안전한 채널을 통해 전달)
 ```
 source nzero_secret.sh
 ```
 
 2. Change Detecion 수신
+* activate virtualenv
+```
+pyenv activate {your virtualenv}
+```
 * usage
+
+eventhub message retention: 7days 이므로 **NZERO 에서 7d 이내에 데이터 수신 필요**
+
 ```
 # 사용법
 python recv_candidate.py <date>
 
 # 현재 시점부터 구독
+# 현재 시점에 Publish 하는 데이터가 없으므로 아무것도 받지 않는 대기 상태
 python recv_candidate.py
 
 # 현재 날짜 기준으로 < 7d 이내, 특정 날짜부터 구독 (재실행시 overwrite)
-python recv_candidate.py 2020/12/15
+# 즉, 현재날짜 기준 7일 이내이고, 2021/1/26 일부터 Publish 된 데이터를 구독하여 테스트 가능. (현재 해당 날짜에 데이터 publish 되어 있어 테스트 가능함.)
+python recv_candidate.py 2021/1/26
 ```
 
 3. /output 구조
 
+위 실행을 통해 /output 폴더에 Change Detecion 정보들을 확인할 수 있다.
+서울시 CITS 전체 구간을 3주 동안 차량 1대로 10회 반복 주행하여 수집한 ROD를 클러스터링 하였고,
+HDMap Update 알고리즘을 통해 총 14건의 Add Candidate 생성되었다.
+Lnadmark에 대한 속성 정보는 info.json 을 통해 확인 가능하고, 검지를 위해 capture.jpg(option) street view 이미지를 활용할 수 있다.
+
 * File Structure
 ```
-output
-├── add
-│   ├── 557631708F01N003562
-│   │   └── info.json
-│   ├── 557631708F01R999999
-│   │   └── info.json
-│   ├── 557631735F02N000395
-│   │   └── info.json
-── del
-    ├── 557631735F01N001085
-    │   └── info.json
-    ├── 557631735F01N001087
-    │   └── info.json
-    ├── 557631735F01N001097
-    │   └── info.json
-```
-
-* info.json (output/del) sample
-```
-{
-  "ver": "0.1",
-  "type": "del",
-  "hdmapId": "557631910F01N000387",
-  "observeRate": 0.12,
-  "category": "sign",
-  "attribute": 399,
-  "x": 320323.28,
-  "y": 4159710.2,
-  "z": 65.507,
-  "heading": -1.
-}
+add
+├── 557631708F01N003563
+│   ├── capture.jpg
+│   └── info.json
+├── 557631906F01N007442
+│   ├── capture.jpg
+│   └── info.json
+├── 557631906F01N007443
+│   ├── capture.jpg
+│   └── info.json
+├── 557631913F01N004903
+│   ├── capture.jpg
+│   └── info.json
+├── 557631913F01N004904
+│   ├── capture.jpg
+│   └── info.json
+├── 557631928F01N005951
+│   ├── capture.jpg
+│   └── info.json
+├── 557631928F01N005952
+│   ├── capture.jpg
+│   └── info.json
+├── 557631928F01N005953
+│   ├── capture.jpg
+│   └── info.json
+├── 557631929F01N003858
+│   ├── capture.jpg
+│   └── info.json
+├── 557631930F01N001097
+│   └── info.json
+├── 557631933F01N003868
+│   ├── capture.jpg
+│   └── info.json
+├── 557632273F01N002362
+│   ├── capture.jpg
+│   └── info.json
+├── 557632273F01N002363
+│   ├── capture.jpg
+│   └── info.json
+└── 557632273F01N002364
+    ├── capture.jpg
+    └── info.json
 ```
 
 * info.json (output/add) sample
 ```
 {
+  "ver": "0.1",                       # version
+  "type": "add",                      # event type (add or delete)
+  "hdmapId": "557631708F01N003563",   # SKT HDMap ID
+  "dlCnt": 11,                        # 관측된 Landmark 수
+  "category": "sign",                 # Landmark 카테고리
+  "attribute": 215,                   # Landmark 속성
+  "x": 312917.94,                     # UTM_52S East
+  "y": 4153088.2,                     # UTM_52S North
+  "z": 36.1615,                       # UTM_52S Altitude
+  "heading": 232.0                    # Landmark heading
+}
+```
+* capture image (street view image)
+![capture](./imgs/capture.jpg)
+
+* info.json (output/del) sample
+CITS 3주 데이터를 통해서는 del candidate 는 생성되지 않았지만, 생성시 아래와 같은 format 으로 구성
+```
+{
   "ver": "0.1",
-  "type": "add",
+  "type": "del",
   "hdmapId": "557631910F01N000387",
-  "observeRate": 0.12,
+  "observeRate": 0.12,                # 관측율 = (관측횟수 / 주행횟수)
   "category": "sign",
   "attribute": 399,
   "x": 320323.28,
