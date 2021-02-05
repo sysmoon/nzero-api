@@ -16,10 +16,7 @@ import io
 import datetime
 import json
 from google.protobuf.json_format import MessageToJson
-# private modules
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(os.path.dirname(__file__)))))
 import campaign_pb2
-# from src import config
 from google.protobuf.json_format import MessageToJson
 import logging
 
@@ -51,15 +48,10 @@ async def on_event(partition_context, event):
 
         # create directory by name (hdmap_id)
         if(campaignpacket.hdmap_id):
-            # targetpath = '{basepath}/{blob_container}/{blob_dir}'.format(
-            #     basepath='output',
-            #     blob_container=campaignpacket.image.blob_container,
-            #     blob_dir=campaignpacket.image.blob_dir,
-            # )
-
-            targetpath = '{basepath}/{type}/{hdmap_id}'.format(
+            targetpath = '{basepath}/{type}/{date}/{hdmap_id}'.format(
                 basepath='output',
                 type=campaignpacket.type,
+                date=campaignpacket.date,
                 hdmap_id=campaignpacket.hdmap_id
             )
 
@@ -70,17 +62,10 @@ async def on_event(partition_context, event):
             logger.info(jsonmsg)
             jsonobj = json.loads(jsonmsg)
 
-            # save info.json
-            if 'image' in jsonobj.keys():
-                del jsonobj['image']
-
             # save candidate info to info.json
             with open('{}/info.json'.format(targetpath), 'w') as f:
                 f.write(json.dumps(jsonobj))
 
-            if campaignpacket.image.image_data:
-                with open('{}/capture.jpg'.format(targetpath), 'wb') as f:
-                    f.write(campaignpacket.image.image_data)
     except Exception as e:
         logger.exception(e)
 
