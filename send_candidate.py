@@ -126,7 +126,7 @@ async def sendCandidate():
         campaignpacket.observe_rate = round(candidate['observe_rate'], 2)
 
       # coordinate projection utm52n > wgs84
-      wgs_xy = getUtm2Wgs84(candidate['x'], candidate['y'])
+      wgs_xy = await getUtm2Wgs84(candidate['x'], candidate['y'])
 
       campaignpacket.category = candidate['cate']
       campaignpacket.attribute = int(candidate['attribute'])
