@@ -19,6 +19,7 @@ import psycopg2.extras
 from azure.storage.blob import BlobServiceClient, BlobClient, ContainerClient, __version__
 import logging
 from datetime import date
+from pyproj import Proj, transform
 
 # define
 BLOB_CONNECTION_STR=os.getenv('BLOB_CONNECTION_STR')
@@ -44,6 +45,15 @@ mongoClient = MongoClient(
   password=MONGO_PWD,
   ssl=True
 )
+
+async def getUtm2Wgs84(utm_x, utm_y):
+    try:
+        proj_utmk = Proj(init='epsg:32652')
+        proj_wgs84 = Proj(init='epsg:4326')
+        wgs_x, wgs_y = transform(proj_utmk, proj_wgs84, utm_x, utm_y)
+        return (wgs_x, wgs_y)
+    except Exception as e:
+        print(e)
 
 async def getAddCandidate():
   try:
@@ -115,10 +125,13 @@ async def sendCandidate():
       elif type == 'del':
         campaignpacket.observe_rate = round(candidate['observe_rate'], 2)
 
+      # coordinate projection utm52n > wgs84
+      wgs_xy = getUtm2Wgs84(candidate['x'], candidate['y'])
+
       campaignpacket.category = candidate['cate']
       campaignpacket.attribute = int(candidate['attribute'])
-      campaignpacket.x = candidate['x']
-      campaignpacket.y = candidate['y']
+      campaignpacket.x = wgs_xy[0]
+      campaignpacket.y = wgs_xy[1]
       campaignpacket.z = candidate['z']
       campaignpacket.heading = candidate['heading']
       campaignpacket.date = todaystr

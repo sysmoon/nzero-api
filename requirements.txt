@@ -24,6 +24,7 @@ protobuf==3.14.0
 psycopg2==2.8.5
 pycparser==2.20
 pymongo==3.11.2
+pyproj==3.0.0.post1
 python-dateutil==2.8.1
 redis==3.5.3
 requests==2.24.0
