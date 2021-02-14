@@ -29,6 +29,7 @@ send module(send_candidate.py) 에서 change detecion 속성 정보(info.json) �
 5. Subscribe
 receive module(recv_candidate.py) 에서 데이터 수신후 local /output 경로명에 각 change detecion 속성 정보(info.json) 와 캡쳐 사진 저장 (하단 디렉토리 구조 참고)
 
+**2,3번 캠페인 기능은 삭제**
 
 ## Database
 
@@ -39,14 +40,6 @@ campaign.proto
 // SKT campaign data definitions
 syntax = "proto2";
 package campaign;
-
-message Image {
-    required string type = 1;   //"jpeg" , "yuv422" , "yuv420"
-    optional bytes  image_data = 2;
-    optional string blob_container = 3;
-    optional string blob_dir = 4;
-    optional string blob_file_nm = 5;
-}
 
 // ****************************************
 // [[[[ Definiton of Campaign ]]]]
@@ -63,7 +56,6 @@ message CampaignPacket {
     required float y = 9; // Landmark coordinate y
     optional float z = 10; // Landmark coordinate z
     optional float heading = 11; // Landmark heading
-    optional Image image = 12; // campaign image (option)
 }
 // [END messages]
 ```
@@ -247,51 +239,38 @@ python recv_candidate.py 2021/1/26
 위 실행을 통해 /output 폴더에 Change Detecion 정보들을 확인할 수 있다.
 서울시 CITS 전체 구간을 3주 동안 차량 1대로 10회 반복 주행하여 수집한 ROD를 클러스터링 하였고,
 HDMap Update 알고리즘을 통해 총 14건의 Add Candidate 생성되었다.
-Lnadmark에 대한 속성 정보는 info.json 을 통해 확인 가능하고, 검지를 위해 capture.jpg(option) street view 이미지를 활용할 수 있다.
+Lnadmark에 대한 속성 정보는 info.json 을 통해 확인하다.
 
 * File Structure
 ```
 add
 ├── 557631708F01N003563
-│   ├── capture.jpg
 │   └── info.json
 ├── 557631906F01N007442
-│   ├── capture.jpg
 │   └── info.json
 ├── 557631906F01N007443
-│   ├── capture.jpg
 │   └── info.json
 ├── 557631913F01N004903
-│   ├── capture.jpg
 │   └── info.json
 ├── 557631913F01N004904
-│   ├── capture.jpg
 │   └── info.json
 ├── 557631928F01N005951
-│   ├── capture.jpg
 │   └── info.json
 ├── 557631928F01N005952
-│   ├── capture.jpg
 │   └── info.json
 ├── 557631928F01N005953
-│   ├── capture.jpg
 │   └── info.json
 ├── 557631929F01N003858
-│   ├── capture.jpg
 │   └── info.json
 ├── 557631930F01N001097
 │   └── info.json
 ├── 557631933F01N003868
-│   ├── capture.jpg
 │   └── info.json
 ├── 557632273F01N002362
-│   ├── capture.jpg
 │   └── info.json
 ├── 557632273F01N002363
-│   ├── capture.jpg
 │   └── info.json
 └── 557632273F01N002364
-    ├── capture.jpg
     └── info.json
 ```
 
@@ -310,8 +289,6 @@ add
   "heading": 232.0                    # Landmark heading
 }
 ```
-* capture image (street view image)
-![capture](./imgs/capture.jpg)
 
 * info.json (output/del) sample
 CITS 3주 데이터를 통해서는 del candidate 는 생성되지 않았지만, 생성시 아래와 같은 format 으로 구성
