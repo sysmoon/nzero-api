@@ -17,11 +17,11 @@ crowd sourcing 기반으로 수집된 ROD 데이터를 클러스터링 하고, H
 1. change detection 조회
 mongodb 저장된 add/delete candidate 정보를 주기적으로(1d) 조회
 
-2. 캠페인 매핑 (**Option**)
-add/delete candidate 정보와 매칭되는 (/w hdmap_id) 캠페인 데이터 수신
+~~2. 캠페인 매핑 (**Option**)
+add/delete candidate 정보와 매칭되는 (/w hdmap_id) 캠페인 데이터 수신~~
 
-3. Capture Image Download (**Option**)
-캠페인 데이터 안에 포함된 차량에서 캡쳐하여 올린 사진 이미지를 blob 에서 다운로드
+~~3. Capture Image Download (**Option**)
+캠페인 데이터 안에 포함된 차량에서 캡쳐하여 올린 사진 이미지를 blob 에서 다운로드~~
 
 4. Publish
 send module(send_candidate.py) 에서 change detecion 속성 정보(info.json) 와 캡쳐 사진(capture.jpg) 이미지를 protobuf 시리얼라이징을 통해 EH(EventHub) 로 Publish
@@ -243,35 +243,47 @@ Lnadmark에 대한 속성 정보는 info.json 을 통해 확인하다.
 
 * File Structure
 ```
-add
-├── 557631708F01N003563
-│   └── info.json
-├── 557631906F01N007442
-│   └── info.json
-├── 557631906F01N007443
-│   └── info.json
-├── 557631913F01N004903
-│   └── info.json
-├── 557631913F01N004904
-│   └── info.json
-├── 557631928F01N005951
-│   └── info.json
-├── 557631928F01N005952
-│   └── info.json
-├── 557631928F01N005953
-│   └── info.json
-├── 557631929F01N003858
-│   └── info.json
-├── 557631930F01N001097
-│   └── info.json
-├── 557631933F01N003868
-│   └── info.json
-├── 557632273F01N002362
-│   └── info.json
-├── 557632273F01N002363
-│   └── info.json
-└── 557632273F01N002364
-    └── info.json
+output
+├── add
+│   └── 2021-02-08
+│       ├── 557631708F01N003563
+│       │   └── info.json
+│       ├── 557631906F01N007442
+│       │   └── info.json
+│       ├── 557631906F01N007443
+│       │   └── info.json
+│       ├── 557631913F01N004903
+│       │   └── info.json
+│       ├── 557631913F01N004904
+│       │   └── info.json
+│       ├── 557631928F01N005951
+│       │   └── info.json
+│       ├── 557631928F01N005952
+│       │   └── info.json
+│       ├── 557631928F01N005953
+│       │   └── info.json
+│       ├── 557631929F01N003858
+│       │   └── info.json
+│       ├── 557631930F01N001097
+│       │   └── info.json
+│       ├── 557631933F01N003868
+│       │   └── info.json
+│       ├── 557632273F01N002363
+│       │   └── info.json
+│       └── 557632273F01N002364
+│           └── info.json
+└── del
+    └── 2021-02-08
+        ├── 557631708F02N000075
+        │   └── info.json
+        ├── 557631708F02N000076
+        │   └── info.json
+        ├── 557631710F02N000013
+        │   └── info.json
+        ├── 557631710F02N000019
+        │   └── info.json
+        └── 557631710F02N000043
+            └── info.json
 ```
 
 * info.json (output/add) sample
